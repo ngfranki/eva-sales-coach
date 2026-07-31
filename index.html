@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WBH 成交教練</title>
+<style>
+  :root{
+    --paper:#F7F3EC; --card:#FFFDF8; --ink:#2B2620; --ink2:#6E655A;
+    --gold:#B08D46; --gold-soft:#EADFC8; --line:#E5DCCB;
+    --good:#5F7A52; --good-bg:#E7EFE0; --warn:#B08D46; --warn-bg:#F3EAD5;
+    --bad:#A4543C; --bad-bg:#F3E2DB;
+    --bubble-me:#DCEED0; --bubble-them:#FFFFFF; --chat-bg:#EFE7D8;
+    --shadow:0 1px 3px rgba(43,38,32,.08),0 8px 24px rgba(43,38,32,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#1E1B16; --card:#27231C; --ink:#EDE6DA; --ink2:#A99E8E;
+      --gold:#C9A55E; --gold-soft:#3A3222; --line:#3A342A;
+      --good:#8FAF7E; --good-bg:#2A3323; --warn:#C9A55E; --warn-bg:#38301D;
+      --bad:#C67B5F; --bad-bg:#3A2A22;
+      --bubble-me:#3A4A30; --bubble-them:#2E2A22; --chat-bg:#211E18;
+      --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{font-size:16px}
+  body{font-family:-apple-system,"PingFang HK","PingFang TC","Microsoft JhengHei",sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;min-height:100vh}
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 80px}
+  .kicker{font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700}
+  h1{font-size:1.7rem;font-weight:800;text-wrap:balance}
+  h2{font-size:1.15rem;font-weight:700;margin-bottom:.6rem}
+  .sub{color:var(--ink2);font-size:.88rem}
+  .hidden{display:none!important}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;font-size:.92rem}
+  .btn-gold{background:var(--gold);color:#fff;padding:10px 22px;font-weight:700}
+  .btn-gold:hover{filter:brightness(1.07)}
+  .btn-ghost{background:transparent;color:var(--ink2);padding:10px 16px;border:1px solid var(--line)}
+  .btn-ghost:hover{color:var(--ink);border-color:var(--gold)}
+  button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  input[type=text],input[type=password]{font-family:inherit;font-size:1rem;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);width:100%}
+  input:focus{outline:2px solid var(--gold)}
+  select{font-family:inherit;font-size:.85rem;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+
+  /* login */
+  .login-box{max-width:440px;margin:8vh auto 0;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:30px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px}
+  .prof-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;cursor:pointer}
+  .prof-item:hover{border-color:var(--gold)}
+  .prof-item .av2{width:38px;height:38px;border-radius:50%;background:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--gold)}
+  .notice{font-size:.78rem;color:var(--ink2);border-top:1px dashed var(--line);padding-top:10px}
+
+  header.app{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:8px;flex-wrap:wrap}
+  .userchip{display:flex;align-items:center;gap:8px;font-size:.85rem}
+  .userchip .av2{width:30px;height:30px;border-radius:50%;background:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--gold);font-size:.8rem}
+  .datasource{font-size:.78rem;color:var(--ink2);margin:10px 0 20px;padding:10px 14px;border-left:3px solid var(--gold);background:var(--card);border-radius:0 8px 8px 0}
+  .stats{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 20px;min-width:140px;box-shadow:var(--shadow)}
+  .stat .v{font-size:1.5rem;font-weight:800;font-variant-numeric:tabular-nums}
+  .stat .l{font-size:.78rem;color:var(--ink2)}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+  .fchip{font-size:.82rem;padding:6px 14px;border-radius:99px;border:1px solid var(--line);background:var(--card);color:var(--ink2);cursor:pointer}
+  .fchip.on{background:var(--gold);color:#fff;border-color:var(--gold);font-weight:700}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;transition:transform .12s ease,border-color .12s ease}
+  .pcard:hover{transform:translateY(-2px);border-color:var(--gold)}
+  .pcard .top{display:flex;align-items:center;gap:10px}
+  .pcard .em{font-size:1.6rem}
+  .pcard .nm{font-weight:800}
+  .pcard .tt{font-size:.85rem;color:var(--ink2)}
+  .chip{display:inline-block;font-size:.7rem;font-weight:700;color:var(--gold);background:var(--gold-soft);border-radius:99px;padding:2px 10px;margin-left:auto;white-space:nowrap}
+  .pcard .bf{font-size:.85rem;color:var(--ink2)}
+  .pcard .pv{font-size:.72rem;color:var(--ink2);opacity:.75;border-top:1px dashed var(--line);padding-top:8px}
+  .pcard .go{display:flex;gap:8px;align-items:center;margin-top:4px}
+  .pcard .go select{flex:1;min-width:0}
+  .pcard .go button{flex-shrink:0}
+
+  .prac-bar{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+  .prac-bar .who{font-weight:800}
+  .prac-bar .df{font-size:.78rem;color:var(--ink2)}
+  .prac-bar .spacer{flex:1}
+  .scenario{font-size:.85rem;background:var(--warn-bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+  .phone{max-width:560px;margin:0 auto;background:var(--chat-bg);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+  .phone-hd{background:var(--card);padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+  .phone-hd .av{width:36px;height:36px;border-radius:50%;background:var(--gold-soft);display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+  .phone-hd .st{font-size:.72rem;color:var(--good)}
+  .msgs{height:52vh;min-height:340px;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:8px}
+  .m{max-width:78%;padding:8px 12px;border-radius:12px;font-size:.92rem;white-space:pre-wrap;box-shadow:0 1px 1px rgba(0,0,0,.06)}
+  .m.them{background:var(--bubble-them);align-self:flex-start;border-bottom-left-radius:4px}
+  .m.me{background:var(--bubble-me);align-self:flex-end;border-bottom-right-radius:4px}
+  .m.sys{background:transparent;box-shadow:none;align-self:center;color:var(--ink2);font-size:.78rem;font-style:italic}
+  .typing{align-self:flex-start;color:var(--ink2);font-size:.85rem;padding:4px 12px}
+  .inbar{display:flex;gap:8px;padding:10px;background:var(--card);border-top:1px solid var(--line)}
+  .inbar textarea{flex:1;resize:none;font-family:inherit;font-size:.95rem;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);height:44px}
+  .inbar textarea:focus{outline:2px solid var(--gold)}
+  .hint{max-width:560px;margin:10px auto 0;font-size:.78rem;color:var(--ink2);text-align:center}
+
+  .score-hero{display:flex;align-items:center;gap:22px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow);margin-bottom:18px;flex-wrap:wrap}
+  .score-num{font-size:3.4rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--gold);line-height:1}
+  .score-num small{font-size:1rem;color:var(--ink2);font-weight:600}
+  .verdict{flex:1;min-width:240px}
+  .grids{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;margin-bottom:18px}
+  .grid-row{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start}
+  .grid-row .mk{font-size:1.05rem;line-height:1.5}
+  .grid-row .gn{font-weight:700;font-size:.88rem}
+  .grid-row .gc{font-size:.82rem;color:var(--ink2)}
+  .rules{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .rule{font-size:.78rem;padding:5px 12px;border-radius:99px;border:1px solid var(--line)}
+  .rule.ok{background:var(--good-bg);color:var(--good)}
+  .rule.no{background:var(--bad-bg);color:var(--bad)}
+  .topfix{background:var(--gold-soft);border-left:4px solid var(--gold);border-radius:0 12px 12px 0;padding:16px 18px;margin-bottom:18px}
+  .topfix .demo{margin-top:8px;background:var(--card);border-radius:10px;padding:10px 14px;font-size:.9rem;white-space:pre-wrap}
+  .replay{margin-bottom:18px}
+  .replay .rmsg{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+  .replay .rmsg .b{flex:1;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:.88rem;white-space:pre-wrap}
+  .replay .rmsg.good .b{border-left:4px solid var(--good);background:var(--good-bg)}
+  .replay .rmsg.miss .b{border-left:4px solid var(--bad);background:var(--bad-bg)}
+  .replay .note{font-size:.78rem;margin-top:4px;color:var(--ink2)}
+  .replay .note.good{color:var(--good)}
+  .replay .note.miss{color:var(--bad)}
+  .replay .better{font-size:.82rem;margin-top:4px;padding:6px 10px;background:var(--card);border-radius:8px;border:1px dashed var(--gold)}
+  .who-tag{font-size:.7rem;color:var(--ink2);width:34px;flex-shrink:0;text-align:right;padding-top:8px}
+  .tempwrap{margin:6px 0 18px}
+  canvas.curve{width:100%;height:70px;background:var(--card);border:1px solid var(--line);border-radius:10px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+
+  /* profile dashboard */
+  .gridrates{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-bottom:18px}
+  .grate{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:.82rem}
+  .gbar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:4px}
+  .gbar i{display:block;height:100%;background:var(--good)}
+  table.sess{width:100%;border-collapse:collapse;font-size:.85rem;background:var(--card);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  table.sess th,table.sess td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line)}
+  table.sess th{font-size:.75rem;color:var(--ink2);letter-spacing:.06em}
+  table.sess td.sc{font-weight:800;font-variant-numeric:tabular-nums;color:var(--gold)}
+
+  .modal{position:fixed;inset:0;background:rgba(20,17,12,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .modal .box{background:var(--card);border-radius:16px;max-width:560px;width:100%;max-height:82vh;overflow-y:auto;padding:22px;box-shadow:var(--shadow)}
+  .demo-line{display:flex;gap:10px;margin-bottom:8px;font-size:.9rem}
+  .demo-line .w{flex-shrink:0;font-weight:700;color:var(--gold);width:2.4em}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 20px;border-radius:99px;font-size:.85rem;z-index:60;box-shadow:var(--shadow)}
+  @media (prefers-reduced-motion: reduce){.pcard{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ LOGIN ============ -->
+  <div id="viewLogin">
+    <div class="login-box">
+      <div>
+        <div class="kicker">WBH · Eva Sales Coach</div>
+        <h1>成交教練</h1>
+        <div class="sub">登入你嘅帳戶，教練會記住你每一場成績。</div>
+      </div>
+      <div id="profList"></div>
+      <div id="loginForm" class="hidden">
+        <div class="sub" id="loginWho" style="margin-bottom:6px;font-weight:700"></div>
+        <input type="password" id="loginPin" placeholder="輸入密碼" autocomplete="off">
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn-gold" id="btnLogin">登入</button>
+          <button class="btn-ghost" id="btnLoginBack">返回</button>
+        </div>
+      </div>
+      <div id="newForm" class="hidden">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="text" id="newName" placeholder="你嘅名（例：Amy）" autocomplete="off">
+          <input type="password" id="newPin" placeholder="設一個密碼" autocomplete="off">
+          <div style="display:flex;gap:8px">
+            <button class="btn-gold" id="btnCreate">開新帳戶</button>
+            <button class="btn-ghost" id="btnNewBack">返回</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn-ghost" id="btnShowNew">＋ 開新帳戶</button>
+      <div id="keyPanel" class="hidden">
+        <div class="sub" style="font-weight:700;margin-bottom:6px">首次設定：輸入 Access Key</div>
+        <input type="password" id="keyInput" placeholder="貼上 access key（只儲喺呢部裝置）" autocomplete="off">
+        <button class="btn-gold" style="margin-top:8px" id="btnSaveKey">儲存</button>
+      </div>
+      <div class="notice">帳戶同成績暫時儲喺呢部裝置嘅瀏覽器內（唔會上載）。正式學員版會升級做雲端帳戶，去邊部機都睇返自己紀錄。</div>
+    </div>
+  </div>
+
+  <!-- ============ HOME ============ -->
+  <div id="viewHome" class="hidden">
+    <header class="app">
+      <div>
+        <div class="kicker">WBH · Eva Sales Coach</div>
+        <h1>成交教練</h1>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="userchip"><span class="av2" id="userAv"></span><span id="userName"></span></div>
+        <button class="btn-ghost" id="btnProfile">我嘅成績表</button>
+        <button class="btn-ghost" id="btnLogout">登出</button>
+      </div>
+    </header>
+    <div class="datasource">
+      數據底：真實客戶對話全量走訪（35 條線·已匿名）＋ WhatsApp 客戶語言庫 ＋ 香港社媒實證調查。每個客人原型都係由「真正流失過嘅客」砌出嚟——名字全部虛構。
+    </div>
+    <div class="stats" id="statsRow"></div>
+    <h2>揀一個客人開波 <span class="sub" id="cardCount"></span></h2>
+    <div class="filters" id="filterRow"></div>
+    <div class="cards" id="cardGrid"></div>
+  </div>
+
+  <!-- ============ PRACTICE ============ -->
+  <div id="viewPrac" class="hidden">
+    <div class="prac-bar">
+      <span id="pracEmoji" style="font-size:1.5rem"></span>
+      <div><div class="who" id="pracName"></div><div class="df" id="pracDiff"></div></div>
+      <div class="spacer"></div>
+      <button class="btn-ghost" id="btnQuit">放棄呢場</button>
+      <button class="btn-gold" id="btnFinish">完場・攞評分</button>
+    </div>
+    <div class="scenario" id="scenarioBox"></div>
+    <div class="phone">
+      <div class="phone-hd">
+        <div class="av" id="chatAv"></div>
+        <div><div style="font-weight:700" id="chatNm"></div><div class="st">上線中</div></div>
+      </div>
+      <div class="msgs" id="msgs"></div>
+      <div class="inbar">
+        <textarea id="input" placeholder="輸入回覆…（Enter 傳送，Shift+Enter 換行）"></textarea>
+        <button class="btn-gold" id="btnSend">傳送</button>
+      </div>
+    </div>
+    <div class="hint">同真 WhatsApp 一樣：一次 send 幾句長文，客人係會凍㗎。傾到你覺得夠，撳「完場」。</div>
+  </div>
+
+  <!-- ============ REPORT ============ -->
+  <div id="viewReport" class="hidden">
+    <div class="kicker">教練評分</div>
+    <h1 style="margin-bottom:16px" id="repTitle"></h1>
+    <div class="score-hero">
+      <div class="score-num"><span id="repScore">–</span><small>/100</small></div>
+      <div class="verdict"><div style="font-weight:700;margin-bottom:4px">教練總評</div><div class="sub" id="repSummary"></div></div>
+    </div>
+    <h2 id="repRubricName"></h2>
+    <div class="grids" id="repGrids"></div>
+    <h2>三鐵律＋品牌線</h2>
+    <div class="rules" id="repRules"></div>
+    <div class="topfix" id="repTopfix"></div>
+    <h2>逐句回放（綠＝好波・紅＝甩咗）</h2>
+    <div class="tempwrap"><div class="sub" style="margin-bottom:4px">客人溫度曲線（由開場到完場）</div><canvas id="tempCurve" class="curve"></canvas></div>
+    <div class="replay" id="repReplay"></div>
+    <div class="actions">
+      <button class="btn-gold" id="btnRetry">再練一次（同一個客）</button>
+      <button class="btn-ghost" id="btnDemo">睇金牌示範</button>
+      <button class="btn-ghost" id="btnRepProfile">我嘅成績表</button>
+      <button class="btn-ghost" id="btnHome">返首頁</button>
+    </div>
+  </div>
+
+  <!-- ============ PROFILE ============ -->
+  <div id="viewProfile" class="hidden">
+    <div class="kicker">個人成績表</div>
+    <h1 style="margin-bottom:4px" id="pfName"></h1>
+    <div class="sub" style="margin-bottom:18px" id="pfSince"></div>
+    <div class="stats" id="pfStats"></div>
+    <h2>分數走勢</h2>
+    <div class="tempwrap"><canvas id="pfCurve" class="curve" style="height:110px"></canvas></div>
+    <h2>八格掌握度（✅ 率）</h2>
+    <div class="gridrates" id="pfGrids"></div>
+    <div class="topfix" id="pfAdvice"></div>
+    <h2>歷次紀錄</h2>
+    <div style="overflow-x:auto"><table class="sess"><thead><tr><th>日期</th><th>客人</th><th>難度</th><th>分數</th><th>甩咗嘅格</th></tr></thead><tbody id="pfRows"></tbody></table></div>
+    <div class="actions"><button class="btn-gold" id="btnPfHome">返首頁繼續練</button></div>
+  </div>
+</div>
+
+<div id="modalDemo" class="modal hidden"><div class="box">
+  <h2 style="margin-bottom:12px">金牌示範</h2>
+  <div id="demoBody"></div>
+  <button class="btn-gold" style="margin-top:12px" onclick="document.getElementById('modalDemo').classList.add('hidden')">收埋</button>
+</div></div>
+
+<script src="config.js" onerror="void 0"></script>
+<script src="data.js"></script>
+<script>
+const D = window.COACH_DATA;
+const $ = id => document.getElementById(id);
+
+// ---------------- api key（config.js 有就用；冇就問一次儲本機） ----------------
+function apiKey(){
+  if (window.COACH_CONFIG && window.COACH_CONFIG.key) return window.COACH_CONFIG.key;
+  return localStorage.getItem("coachKey") || "";
+}
+function apiModel(){
+  return (window.COACH_CONFIG && window.COACH_CONFIG.model) || localStorage.getItem("coachModel") || "anthropic/claude-sonnet-4.5";
+}
+
+// ---------------- profiles / auth ----------------
+async function sha(s){
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+const profiles = {
+  all(){ try{return JSON.parse(localStorage.getItem("coachProfiles")||"[]")}catch(e){return[]} },
+  save(a){ localStorage.setItem("coachProfiles", JSON.stringify(a)); },
+  current(){ const id = sessionStorage.getItem("coachUser"); return this.all().find(p=>p.id===id)||null; }
+};
+const hist = {
+  key(pid){ return "coachHist_"+pid; },
+  get(pid){ try{return JSON.parse(localStorage.getItem(this.key(pid))||"[]")}catch(e){return[]} },
+  push(pid, rec){ const h=this.get(pid); h.push(rec); localStorage.setItem(this.key(pid), JSON.stringify(h)); }
+};
+let pendingLogin = null;
+
+function renderLogin(){
+  show("viewLogin");
+  const list = profiles.all();
+  $("profList").innerHTML = list.length ? "" : "<div class='sub'>未有帳戶——撳下面開一個。</div>";
+  list.forEach(p=>{
+    const el = document.createElement("div");
+    el.className = "prof-item";
+    el.innerHTML = `<span class="av2">${p.name.slice(0,1)}</span><div><div style="font-weight:700">${p.name}</div><div class="sub" style="font-size:.75rem">練咗 ${hist.get(p.id).length} 場</div></div>`;
+    el.onclick = ()=>{ pendingLogin=p; $("loginWho").textContent = p.name; $("loginForm").classList.remove("hidden"); $("newForm").classList.add("hidden"); $("loginPin").value=""; $("loginPin").focus(); };
+    $("profList").appendChild(el);
+  });
+  $("keyPanel").classList.toggle("hidden", !!apiKey());
+}
+$("btnShowNew").onclick = ()=>{ $("newForm").classList.remove("hidden"); $("loginForm").classList.add("hidden"); $("newName").focus(); };
+$("btnNewBack").onclick = ()=> $("newForm").classList.add("hidden");
+$("btnLoginBack").onclick = ()=> $("loginForm").classList.add("hidden");
+$("btnCreate").onclick = async ()=>{
+  const name = $("newName").value.trim(), pin = $("newPin").value;
+  if(!name || !pin){ toast("名同密碼都要填"); return; }
+  const a = profiles.all();
+  if(a.some(p=>p.name===name)){ toast("呢個名已經有人用"); return; }
+  const p = { id: "p"+Date.now(), name, pinHash: await sha(pin), created: new Date().toISOString() };
+  a.push(p); profiles.save(a);
+  sessionStorage.setItem("coachUser", p.id);
+  enterHome();
+};
+$("btnLogin").onclick = async ()=>{
+  if(!pendingLogin) return;
+  if(await sha($("loginPin").value) !== pendingLogin.pinHash){ toast("密碼唔啱"); return; }
+  sessionStorage.setItem("coachUser", pendingLogin.id);
+  enterHome();
+};
+$("loginPin").addEventListener("keydown", e=>{ if(e.key==="Enter") $("btnLogin").click(); });
+$("btnSaveKey").onclick = ()=>{
+  const k = $("keyInput").value.trim();
+  if(!k){ toast("未貼 key"); return; }
+  localStorage.setItem("coachKey", k); $("keyPanel").classList.add("hidden"); toast("儲存咗（只喺呢部裝置）");
+};
+
+// ---------------- state ----------------
+let S = { persona:null, diff:null, msgs:[], temps:[], busy:false, ended:false };
+let filterCat = "全部";
+
+function show(view){ ["viewLogin","viewHome","viewPrac","viewReport","viewProfile"].forEach(v=>$(v).classList.add("hidden")); $(view).classList.remove("hidden"); }
+
+function enterHome(){
+  const u = profiles.current();
+  if(!u){ renderLogin(); return; }
+  $("userAv").textContent = u.name.slice(0,1);
+  $("userName").textContent = u.name;
+  renderHome();
+  show("viewHome");
+}
+
+// ---------------- home ----------------
+function renderHome(){
+  const u = profiles.current(); if(!u) return;
+  const h = hist.get(u.id);
+  const avg = h.length ? Math.round(h.reduce((a,r)=>a+(r.score||0),0)/h.length) : "–";
+  const last5 = h.slice(-5);
+  const recent = last5.length ? Math.round(last5.reduce((a,r)=>a+r.score,0)/last5.length) : "–";
+  const gridFail = {};
+  h.forEach(r => (r.weakGrids||[]).forEach(g => gridFail[g]=(gridFail[g]||0)+1));
+  const weakest = Object.entries(gridFail).sort((a,b)=>b[1]-a[1])[0];
+  $("statsRow").innerHTML = `
+    <div class="stat"><div class="v">${h.length}</div><div class="l">總場數</div></div>
+    <div class="stat"><div class="v">${avg}</div><div class="l">平均分</div></div>
+    <div class="stat"><div class="v">${recent}</div><div class="l">近 5 場平均</div></div>
+    <div class="stat"><div class="v" style="font-size:1rem;padding-top:8px">${weakest?weakest[0]:"未有數據"}</div><div class="l">最常甩嘅格（練呢度！）</div></div>`;
+  // filters
+  const cats = ["全部", ...new Set(D.personas.map(p=>p.cat))];
+  $("filterRow").innerHTML = "";
+  cats.forEach(c=>{
+    const b = document.createElement("button");
+    b.className = "fchip"+(filterCat===c?" on":"");
+    b.textContent = c;
+    b.onclick = ()=>{ filterCat=c; renderHome(); };
+    $("filterRow").appendChild(b);
+  });
+  const rnd = document.createElement("button");
+  rnd.className = "fchip"; rnd.textContent = "🎲 隨機抽卡";
+  rnd.onclick = ()=>{
+    const pool = D.personas.filter(p=>filterCat==="全部"||p.cat===filterCat);
+    startPractice(pool[Math.floor(Math.random()*pool.length)], "normal");
+  };
+  $("filterRow").appendChild(rnd);
+  // cards
+  const hardOK = h.filter(r=>r.diff==="normal" && r.score>=70).length >= 2;
+  const pool = D.personas.filter(p=>filterCat==="全部"||p.cat===filterCat);
+  $("cardCount").textContent = `（${pool.length}／${D.personas.length} 個案例）`;
+  $("cardGrid").innerHTML = "";
+  pool.forEach(p=>{
+    const el = document.createElement("div");
+    el.className = "pcard";
+    el.innerHTML = `
+      <div class="top"><span class="em">${p.emoji}</span>
+        <div><div class="nm">${p.name}</div><div class="tt">${p.title}</div></div>
+        <span class="chip">${p.tag}</span></div>
+      <div class="bf">${p.brief}</div>
+      <div class="pv">📎 ${p.provenance}</div>
+      <div class="go">
+        <select aria-label="難度">
+          <option value="warm">暖客</option>
+          <option value="normal" selected>普通</option>
+          <option value="hard" ${hardOK?"":"disabled"} title="普通難度攞兩次 70 分先解鎖">硬淨${hardOK?"":" 🔒"}</option>
+        </select>
+        <button class="btn-gold">開波</button>
+      </div>`;
+    el.querySelector("button").onclick = ()=> startPractice(p, el.querySelector("select").value);
+    $("cardGrid").appendChild(el);
+  });
+}
+$("btnLogout").onclick = ()=>{ sessionStorage.removeItem("coachUser"); renderLogin(); };
+$("btnProfile").onclick = ()=> renderProfile();
+$("btnRepProfile").onclick = ()=> renderProfile();
+$("btnPfHome").onclick = ()=> enterHome();
+
+// ---------------- practice ----------------
+function startPractice(p, diff){
+  if(!apiKey()){ toast("未設定 access key——登出返去首頁貼一次"); return; }
+  S = { persona:p, diff, msgs:[], temps:[], busy:false, ended:false };
+  $("pracEmoji").textContent = p.emoji;
+  $("pracName").textContent = p.name + "・" + p.title;
+  const dObj = D.difficulties.find(d=>d.id===diff);
+  $("pracDiff").textContent = "難度：" + dObj.name + "｜評分尺：" + D.rubrics[p.rubricSet].name;
+  $("chatAv").textContent = p.emoji;
+  $("chatNm").textContent = p.name;
+  $("scenarioBox").textContent = (p.openLine==="__SILENT__")
+    ? "背景：呢條線凍咗（自動化 send 完資料／客人消失咗）。由你（真人）出第一句接力。"
+    : "背景：客人啱啱喺 IG/FB 廣告入嚟 DM。由佢開波，你接住。";
+  $("msgs").innerHTML = "";
+  show("viewPrac");
+  if (p.openLine !== "__SILENT__"){
+    addMsg("them", p.openLine);
+    S.msgs.push({role:"assistant", content:p.openLine});
+  } else {
+    addMsg("sys", "（對話冷凍中——你出第一句）");
+  }
+  $("input").focus();
+}
+
+function addMsg(kind, text){
+  const el = document.createElement("div");
+  el.className = "m " + kind;
+  el.textContent = text;
+  $("msgs").appendChild(el);
+  $("msgs").scrollTop = $("msgs").scrollHeight;
+}
+
+function customerSystemPrompt(){
+  const p = S.persona, dObj = D.difficulties.find(d=>d.id===S.diff);
+  return `${D.hkEngine}\n\n【你嘅角色設定】${p.personaPrompt}\n\n【難度調整】${dObj.name}：${dObj.tempMod}\n\n【課程背景知識（你係客人，只知公開資訊，但唔好講錯事實）】${D.courseFacts}\n\n對話發生喺 WhatsApp/IG DM。你只可以輸出客人講嘅嘢（連 @@temp=N@@ 尾行）。唔准跳出角色，唔准教學，唔准解釋自己行為。`;
+}
+
+async function callLLM(messages, maxTokens){
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method:"POST",
+    headers:{ "Authorization":"Bearer "+apiKey(), "Content-Type":"application/json" },
+    body: JSON.stringify({ model: apiModel(), messages, max_tokens: maxTokens||500, temperature: 0.8 })
+  });
+  if (!res.ok) throw new Error("API " + res.status + "：" + (await res.text()).slice(0,200));
+  const j = await res.json();
+  return j.choices[0].message.content;
+}
+
+async function sendTurn(){
+  if (S.busy || S.ended) return;
+  const t = $("input").value.trim();
+  if (!t) return;
+  $("input").value = "";
+  addMsg("me", t);
+  S.msgs.push({role:"user", content:t});
+  S.busy = true;
+  const ty = document.createElement("div"); ty.className="typing"; ty.textContent = S.persona.name + " 輸入緊…";
+  $("msgs").appendChild(ty); $("msgs").scrollTop = $("msgs").scrollHeight;
+  try{
+    let out = await callLLM([{role:"system",content:customerSystemPrompt()}, ...S.msgs], 400);
+    ty.remove();
+    const tm = out.match(/@@temp=(\d+)@@/);
+    if (tm) S.temps.push(Math.max(0,Math.min(100,parseInt(tm[1]))));
+    out = out.replace(/@@temp=\d+@@/g,"").trim();
+    S.msgs.push({role:"assistant", content:out});
+    if (out.includes("[BLOCKED]")){
+      addMsg("sys","🚫 客人 block 咗你。（自動完場評分）");
+      S.ended = true; setTimeout(finishSession, 800);
+    } else if (out.includes("[已讀不回]")){
+      addMsg("sys","✓✓ 已讀（客人冇回覆）——你可以再試一句，或者撳完場");
+    } else {
+      addMsg("them", out);
+    }
+  }catch(e){ ty.remove(); toast("出錯：" + e.message); }
+  S.busy = false;
+}
+
+// ---------------- coach ----------------
+function coachSystemPrompt(){
+  const p = S.persona;
+  const rub = D.rubrics[p.rubricSet];
+  return `你係 Eva 教練——香港顧問式成交教練，用小船「醫生問診」派 12 步框架評卷。語言：廣東話書面語，具體、唔留情面但有建設性。
+
+【今場設定】客人卡：${p.name}（${p.title}）。佢嘅隱藏設定：${p.personaPrompt}
+
+【評分尺：${rub.name}】
+${rub.grids.map(g=>`${g.name}：${g.desc}`).join("\n")}
+
+【三鐵律】${D.ironRules.join("｜")}
+【品牌線】${D.brandRules.join("｜")}
+【課程事實（學員講錯價錢/作嘢要捉）】${D.courseFacts}
+
+【評分心法】
+- 價格異議只有兩個成因：痛點挖唔夠深，或者佢唔信你幫到佢。學員聽到嫌貴就減價/畀折扣＝醫錯病，直接❌。
+- 客人講「冇問題」「好的謝謝」係學員嘅問題，唔係客人嘅問題。
+- 「答晒所有問題」唔等於高分——資訊畀齊而冇問診、冇留鈎、冇下一步＝低分。
+- 客人有講出關鍵詞而學員下一句冇接住＝該格⚠️或❌。
+- 對話太短（學員少過3句）就照評，冇做嘅格畀❌並講明「未行到呢步」。
+- 如果張卡嘅滿分結局係勸退/放手/種未來客（例：預算真係唔夠、地獄級跟進），識收線留後路＝高分，死夾＝低分。
+
+【輸出格式】只輸出一個 JSON object，唔准有其他文字：
+{
+ "totalScore": 0-100 整數,
+ "summary": "兩三句總評（先講最大亮點，再講最致命一刀）",
+ "grids": [{"name":"格名","mark":"✅|⚠️|❌","comment":"一句點解"}],
+ "rules": [{"name":"鐵律/品牌線名","pass":true|false,"comment":"一句"}],
+ "lineNotes": [{"index":學員訊息喺對話入面嘅次序(由0數起計晒雙方訊息),"type":"good|miss","note":"一句","better":"（miss先要）呢句應該點講"}],
+ "topFix": {"grid":"最應該改嘅一格","advice":"具體改法兩三句","demoLine":"一句可以直接照抄嘅示範句"}
+}`;
+}
+
+async function finishSession(){
+  if (S.msgs.filter(m=>m.role==="user").length === 0){ toast("你一句都未講，冇嘢好評住 😅"); return; }
+  show("viewReport");
+  $("repTitle").textContent = S.persona.emoji + " " + S.persona.name + "・評分中…";
+  $("repScore").textContent = "…";
+  $("repSummary").textContent = "教練睇緊你場對話，幾秒鐘。";
+  ["repGrids","repRules","repTopfix","repReplay"].forEach(id=>$(id).innerHTML="");
+  const transcript = S.msgs.map((m,i)=>`[${i}] ${m.role==="user"?"學員":"客人"}：${m.content}`).join("\n");
+  try{
+    let out = await callLLM([
+      {role:"system",content:coachSystemPrompt()},
+      {role:"user",content:"以下係成場對話逐句紀錄，請評分：\n\n"+transcript}
+    ], 2500);
+    const j = JSON.parse(out.slice(out.indexOf("{"), out.lastIndexOf("}")+1));
+    renderReport(j);
+    const u = profiles.current();
+    if (u) hist.push(u.id, {
+      ts: new Date().toISOString(), personaId:S.persona.id, personaName:S.persona.name+"・"+S.persona.title,
+      diff:S.diff, score:j.totalScore, rubricSet:S.persona.rubricSet,
+      gridMarks: j.grids.map(g=>({name:g.name,mark:g.mark})),
+      weakGrids: j.grids.filter(g=>g.mark!=="✅").map(g=>g.name)
+    });
+  }catch(e){
+    $("repSummary").textContent = "評分出錯：" + e.message + "（撳「再練一次」或返首頁重試）";
+  }
+}
+
+function renderReport(j){
+  $("repTitle").textContent = S.persona.emoji + " " + S.persona.name + "・" + S.persona.title;
+  $("repScore").textContent = j.totalScore;
+  $("repSummary").textContent = j.summary;
+  $("repRubricName").textContent = D.rubrics[S.persona.rubricSet].name;
+  $("repGrids").innerHTML = j.grids.map(g=>`
+    <div class="grid-row"><span class="mk">${g.mark}</span>
+      <div><div class="gn">${g.name}</div><div class="gc">${g.comment}</div></div></div>`).join("");
+  $("repRules").innerHTML = (j.rules||[]).map(r=>`
+    <span class="rule ${r.pass?"ok":"no"}">${r.pass?"✓":"✗"} ${r.name}${r.pass?"":"——"+r.comment}</span>`).join("");
+  const tf = j.topFix||{};
+  $("repTopfix").innerHTML = `<div style="font-weight:800">🎯 最應該改嘅一格：${tf.grid||""}</div>
+    <div class="sub" style="margin-top:4px">${tf.advice||""}</div>
+    ${tf.demoLine?`<div class="demo">示範句：「${tf.demoLine}」</div>`:""}`;
+  const notes = {}; (j.lineNotes||[]).forEach(n=>notes[n.index]=n);
+  $("repReplay").innerHTML = S.msgs.map((m,i)=>{
+    const n = notes[i];
+    const cls = m.role==="user" ? ("me"+(n?" "+n.type:"")) : "";
+    return `<div class="rmsg ${cls}">
+      <div class="who-tag">${m.role==="user"?"你":"客"}</div>
+      <div style="flex:1"><div class="b">${escapeHtml(m.content)}</div>
+      ${n?`<div class="note ${n.type}">${n.type==="good"?"👍":"⚠️"} ${n.note}</div>`:""}
+      ${n&&n.better?`<div class="better">💡 應該噉講：「${escapeHtml(n.better)}」</div>`:""}</div></div>`;
+  }).join("");
+  drawCurve($("tempCurve"), S.temps.length?S.temps:[40], 100);
+}
+
+// ---------------- profile dashboard ----------------
+function renderProfile(){
+  const u = profiles.current(); if(!u){ renderLogin(); return; }
+  const h = hist.get(u.id);
+  $("pfName").textContent = u.name;
+  $("pfSince").textContent = "帳戶開通：" + new Date(u.created).toLocaleDateString("zh-HK") + "｜共 " + h.length + " 場";
+  const avg = h.length ? Math.round(h.reduce((a,r)=>a+r.score,0)/h.length) : 0;
+  const best = h.length ? Math.max(...h.map(r=>r.score)) : 0;
+  const first3 = h.slice(0,3), last3 = h.slice(-3);
+  const improve = (first3.length&&last3.length&&h.length>3)
+    ? Math.round(last3.reduce((a,r)=>a+r.score,0)/last3.length - first3.reduce((a,r)=>a+r.score,0)/first3.length) : null;
+  $("pfStats").innerHTML = `
+    <div class="stat"><div class="v">${h.length}</div><div class="l">總場數</div></div>
+    <div class="stat"><div class="v">${avg}</div><div class="l">平均分</div></div>
+    <div class="stat"><div class="v">${best}</div><div class="l">最高分</div></div>
+    <div class="stat"><div class="v">${improve===null?"–":(improve>=0?"+":"")+improve}</div><div class="l">進步（頭3場 vs 尾3場）</div></div>`;
+  drawCurve($("pfCurve"), h.map(r=>r.score), 100);
+  // grid mastery
+  const tally = {};
+  h.forEach(r=>(r.gridMarks||[]).forEach(g=>{
+    tally[g.name] = tally[g.name]||{ok:0,total:0};
+    tally[g.name].total++; if(g.mark==="✅") tally[g.name].ok++;
+  }));
+  $("pfGrids").innerHTML = Object.entries(tally).map(([name,t])=>{
+    const pct = Math.round(t.ok/t.total*100);
+    return `<div class="grate"><div style="display:flex;justify-content:space-between"><span>${name}</span><b style="font-variant-numeric:tabular-nums">${pct}%</b></div><div class="gbar"><i style="width:${pct}%"></i></div></div>`;
+  }).join("") || "<div class='sub'>練咗先有數據 😉</div>";
+  // advice
+  const worst = Object.entries(tally).filter(([,t])=>t.total>=2).sort((a,b)=>(a[1].ok/a[1].total)-(b[1].ok/b[1].total))[0];
+  $("pfAdvice").innerHTML = worst
+    ? `<div style="font-weight:800">🎯 教練建議</div><div class="sub" style="margin-top:4px">你最弱嘅格係「${worst[0]}」（✅ 率 ${Math.round(worst[1].ok/worst[1].total*100)}%）——下一場特登只練呢一格：其他嘢做少啲都得，呢格一定要做到。</div>`
+    : `<div style="font-weight:800">🎯 教練建議</div><div class="sub" style="margin-top:4px">練多幾場，教練就睇到你嘅 pattern，識話你知最應該操邊一格。</div>`;
+  // rows
+  $("pfRows").innerHTML = h.slice().reverse().map(r=>`
+    <tr><td>${new Date(r.ts).toLocaleDateString("zh-HK")}</td><td>${r.personaName||r.personaId}</td>
+    <td>${(D.difficulties.find(d=>d.id===r.diff)||{}).name||r.diff}</td><td class="sc">${r.score}</td>
+    <td class="sub">${(r.weakGrids||[]).join("、")||"—"}</td></tr>`).join("")
+    || "<tr><td colspan='5' class='sub'>未有紀錄</td></tr>";
+  show("viewProfile");
+}
+
+// ---------------- misc ----------------
+function drawCurve(c, data, maxV){
+  const ctx = c.getContext("2d");
+  c.width = c.offsetWidth * 2; c.height = c.offsetHeight * 2;
+  ctx.clearRect(0,0,c.width,c.height);
+  if(!data.length) return;
+  const gold = getComputedStyle(document.documentElement).getPropertyValue("--gold").trim();
+  const pad = 20, W = c.width-pad*2, H = c.height-pad*2;
+  ctx.strokeStyle = gold; ctx.lineWidth = 3; ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x = pad + W * (data.length===1?0.5:i/(data.length-1));
+    const y = pad + H * (1 - v/maxV);
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  ctx.fillStyle = gold;
+  data.forEach((v,i)=>{
+    const x = pad + W * (data.length===1?0.5:i/(data.length-1));
+    ctx.beginPath(); ctx.arc(x, pad + H*(1-v/maxV), 5, 0, 7); ctx.fill();
+  });
+}
+function escapeHtml(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function toast(t){ const el=document.createElement("div"); el.className="toast"; el.textContent=t; document.body.appendChild(el); setTimeout(()=>el.remove(),4200); }
+
+$("btnSend").onclick = sendTurn;
+$("input").addEventListener("keydown", e=>{ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); sendTurn(); } });
+$("btnFinish").onclick = ()=>{ S.ended=true; finishSession(); };
+$("btnQuit").onclick = ()=>{ if(confirm("放棄呢場？唔會計分。")) enterHome(); };
+$("btnHome").onclick = ()=> enterHome();
+$("btnRetry").onclick = ()=> startPractice(S.persona, S.diff);
+$("btnDemo").onclick = ()=>{
+  const demo = D.goldDemos[S.persona.rubricSet] || D.goldDemos.full8;
+  $("demoBody").innerHTML = demo.map(l=>`<div class="demo-line"><span class="w">${l.who}</span><span>${escapeHtml(l.text)}</span></div>`).join("");
+  $("modalDemo").classList.remove("hidden");
+};
+
+// boot：有 session 就直入，冇就 login
+profiles.current() ? enterHome() : renderLogin();
+</script>
+</body>
+</html>

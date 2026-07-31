@@ -152,32 +152,26 @@
         <h1>成交教練</h1>
         <div class="sub">登入你嘅帳戶，教練會記住你每一場成績。</div>
       </div>
-      <div id="profList"></div>
-      <div id="loginForm" class="hidden">
-        <div class="sub" id="loginWho" style="margin-bottom:6px;font-weight:700"></div>
-        <input type="password" id="loginPin" placeholder="輸入密碼" autocomplete="off">
-        <div style="display:flex;gap:8px;margin-top:10px">
+      <div id="loginForm">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="text" id="loginEmail" placeholder="Email" autocomplete="email" inputmode="email">
+          <input type="password" id="loginPw" placeholder="密碼" autocomplete="current-password">
           <button class="btn-gold" id="btnLogin">登入</button>
-          <button class="btn-ghost" id="btnLoginBack">返回</button>
         </div>
+        <div class="sub" style="margin-top:10px">未有帳戶？<a href="#" id="linkShowNew" style="color:var(--gold);font-weight:700">開一個</a></div>
       </div>
       <div id="newForm" class="hidden">
         <div style="display:flex;flex-direction:column;gap:8px">
           <input type="text" id="newName" placeholder="你嘅名（例：Amy）" autocomplete="off">
-          <input type="password" id="newPin" placeholder="設一個密碼" autocomplete="off">
+          <input type="text" id="newEmail" placeholder="Email" autocomplete="email" inputmode="email">
+          <input type="password" id="newPw" placeholder="設一個密碼（至少 6 位）" autocomplete="new-password">
           <div style="display:flex;gap:8px">
             <button class="btn-gold" id="btnCreate">開新帳戶</button>
-            <button class="btn-ghost" id="btnNewBack">返回</button>
+            <button class="btn-ghost" id="btnNewBack">返回登入</button>
           </div>
         </div>
       </div>
-      <button class="btn-ghost" id="btnShowNew">＋ 開新帳戶</button>
-      <div id="keyPanel" class="hidden">
-        <div class="sub" style="font-weight:700;margin-bottom:6px">首次設定：輸入 Access Key</div>
-        <input type="password" id="keyInput" placeholder="貼上 access key（只儲喺呢部裝置）" autocomplete="off">
-        <button class="btn-gold" style="margin-top:8px" id="btnSaveKey">儲存</button>
-      </div>
-      <div class="notice">帳戶同成績暫時儲喺呢部裝置嘅瀏覽器內（唔會上載）。正式學員版會升級做雲端帳戶，去邊部機都睇返自己紀錄。</div>
+      <div class="notice">☁️ 帳戶同成績儲喺雲端——手機、電腦、iPad 任何裝置登入，都睇返自己嘅紀錄。</div>
     </div>
   </div>
 
@@ -274,76 +268,62 @@
   <button class="btn-gold" style="margin-top:12px" onclick="document.getElementById('modalDemo').classList.add('hidden')">收埋</button>
 </div></div>
 
-<script src="config.js" onerror="void 0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="data.js"></script>
 <script>
 const D = window.COACH_DATA;
 const $ = id => document.getElementById(id);
 
-// ---------------- api key（config.js 有就用；冇就問一次儲本機） ----------------
-function apiKey(){
-  if (window.COACH_CONFIG && window.COACH_CONFIG.key) return window.COACH_CONFIG.key;
-  return localStorage.getItem("coachKey") || "";
-}
-function apiModel(){
-  return (window.COACH_CONFIG && window.COACH_CONFIG.model) || localStorage.getItem("coachModel") || "anthropic/claude-sonnet-4.5";
-}
+// ---------------- cloud（Supabase：帳戶＋成績＋AI proxy） ----------------
+const SUPA_URL = "https://lvwspnjysfyomuszzjay.supabase.co";
+const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4";
+const sb = window.supabase.createClient(SUPA_URL, SUPA_ANON);
+let ME = null;          // {id, name, created}
+let HIST = [];          // 我嘅雲端成績（登入時載入，本地 append）
 
-// ---------------- profiles / auth ----------------
-async function sha(s){
-  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
-  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
-}
-const profiles = {
-  all(){ try{return JSON.parse(localStorage.getItem("coachProfiles")||"[]")}catch(e){return[]} },
-  save(a){ localStorage.setItem("coachProfiles", JSON.stringify(a)); },
-  current(){ const id = sessionStorage.getItem("coachUser"); return this.all().find(p=>p.id===id)||null; }
-};
+const profiles = { current(){ return ME; } };
 const hist = {
-  key(pid){ return "coachHist_"+pid; },
-  get(pid){ try{return JSON.parse(localStorage.getItem(this.key(pid))||"[]")}catch(e){return[]} },
-  push(pid, rec){ const h=this.get(pid); h.push(rec); localStorage.setItem(this.key(pid), JSON.stringify(h)); }
+  get(){ return HIST; },
+  async push(_pid, rec){
+    HIST.push(rec);
+    const { error } = await sb.from("scores").insert({
+      persona_id: rec.personaId, persona_name: rec.personaName, diff: rec.diff,
+      score: rec.score, rubric_set: rec.rubricSet, grid_marks: rec.gridMarks, weak_grids: rec.weakGrids
+    });
+    if (error) toast("成績上雲失敗：" + error.message);
+  }
 };
-let pendingLogin = null;
 
-function renderLogin(){
-  show("viewLogin");
-  const list = profiles.all();
-  $("profList").innerHTML = list.length ? "" : "<div class='sub'>未有帳戶——撳下面開一個。</div>";
-  list.forEach(p=>{
-    const el = document.createElement("div");
-    el.className = "prof-item";
-    el.innerHTML = `<span class="av2">${p.name.slice(0,1)}</span><div><div style="font-weight:700">${p.name}</div><div class="sub" style="font-size:.75rem">練咗 ${hist.get(p.id).length} 場</div></div>`;
-    el.onclick = ()=>{ pendingLogin=p; $("loginWho").textContent = p.name; $("loginForm").classList.remove("hidden"); $("newForm").classList.add("hidden"); $("loginPin").value=""; $("loginPin").focus(); };
-    $("profList").appendChild(el);
-  });
-  $("keyPanel").classList.toggle("hidden", !!apiKey());
+async function loadCloud(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { ME = null; return false; }
+  ME = { id: session.user.id, name: (session.user.user_metadata||{}).name || session.user.email.split("@")[0], created: session.user.created_at };
+  const { data, error } = await sb.from("scores").select("*").order("ts", { ascending: true });
+  HIST = (error || !data) ? [] : data.map(r => ({
+    ts: r.ts, personaId: r.persona_id, personaName: r.persona_name, diff: r.diff,
+    score: r.score, rubricSet: r.rubric_set, gridMarks: r.grid_marks || [], weakGrids: r.weak_grids || []
+  }));
+  return true;
 }
-$("btnShowNew").onclick = ()=>{ $("newForm").classList.remove("hidden"); $("loginForm").classList.add("hidden"); $("newName").focus(); };
-$("btnNewBack").onclick = ()=> $("newForm").classList.add("hidden");
-$("btnLoginBack").onclick = ()=> $("loginForm").classList.add("hidden");
+
+function renderLogin(){ show("viewLogin"); $("loginEmail").focus(); }
+$("linkShowNew").onclick = (e)=>{ e.preventDefault(); $("newForm").classList.remove("hidden"); $("loginForm").classList.add("hidden"); $("newName").focus(); };
+$("btnNewBack").onclick = ()=>{ $("newForm").classList.add("hidden"); $("loginForm").classList.remove("hidden"); };
 $("btnCreate").onclick = async ()=>{
-  const name = $("newName").value.trim(), pin = $("newPin").value;
-  if(!name || !pin){ toast("名同密碼都要填"); return; }
-  const a = profiles.all();
-  if(a.some(p=>p.name===name)){ toast("呢個名已經有人用"); return; }
-  const p = { id: "p"+Date.now(), name, pinHash: await sha(pin), created: new Date().toISOString() };
-  a.push(p); profiles.save(a);
-  sessionStorage.setItem("coachUser", p.id);
-  enterHome();
+  const name = $("newName").value.trim(), email = $("newEmail").value.trim(), pw = $("newPw").value;
+  if(!name || !email || !pw){ toast("名、email、密碼都要填"); return; }
+  const { error } = await sb.auth.signUp({ email, password: pw, options: { data: { name } } });
+  if (error){ toast("開唔到：" + error.message); return; }
+  await loadCloud(); enterHome();
 };
 $("btnLogin").onclick = async ()=>{
-  if(!pendingLogin) return;
-  if(await sha($("loginPin").value) !== pendingLogin.pinHash){ toast("密碼唔啱"); return; }
-  sessionStorage.setItem("coachUser", pendingLogin.id);
-  enterHome();
+  const email = $("loginEmail").value.trim(), pw = $("loginPw").value;
+  if(!email || !pw){ toast("入返 email 同密碼"); return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error){ toast("登入唔到：" + error.message); return; }
+  await loadCloud(); enterHome();
 };
-$("loginPin").addEventListener("keydown", e=>{ if(e.key==="Enter") $("btnLogin").click(); });
-$("btnSaveKey").onclick = ()=>{
-  const k = $("keyInput").value.trim();
-  if(!k){ toast("未貼 key"); return; }
-  localStorage.setItem("coachKey", k); $("keyPanel").classList.add("hidden"); toast("儲存咗（只喺呢部裝置）");
-};
+$("loginPw").addEventListener("keydown", e=>{ if(e.key==="Enter") $("btnLogin").click(); });
 
 // ---------------- state ----------------
 let S = { persona:null, diff:null, msgs:[], temps:[], busy:false, ended:false };
@@ -418,14 +398,14 @@ function renderHome(){
     $("cardGrid").appendChild(el);
   });
 }
-$("btnLogout").onclick = ()=>{ sessionStorage.removeItem("coachUser"); renderLogin(); };
+$("btnLogout").onclick = async ()=>{ await sb.auth.signOut(); ME=null; HIST=[]; renderLogin(); };
 $("btnProfile").onclick = ()=> renderProfile();
 $("btnRepProfile").onclick = ()=> renderProfile();
 $("btnPfHome").onclick = ()=> enterHome();
 
 // ---------------- practice ----------------
 function startPractice(p, diff){
-  if(!apiKey()){ toast("未設定 access key——登出返去首頁貼一次"); return; }
+  if(!ME){ renderLogin(); return; }
   S = { persona:p, diff, msgs:[], temps:[], busy:false, ended:false };
   $("pracEmoji").textContent = p.emoji;
   $("pracName").textContent = p.name + "・" + p.title;
@@ -461,14 +441,10 @@ function customerSystemPrompt(){
 }
 
 async function callLLM(messages, maxTokens){
-  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method:"POST",
-    headers:{ "Authorization":"Bearer "+apiKey(), "Content-Type":"application/json" },
-    body: JSON.stringify({ model: apiModel(), messages, max_tokens: maxTokens||500, temperature: 0.8 })
-  });
-  if (!res.ok) throw new Error("API " + res.status + "：" + (await res.text()).slice(0,200));
-  const j = await res.json();
-  return j.choices[0].message.content;
+  const { data, error } = await sb.functions.invoke("coach-proxy", { body: { messages, max_tokens: maxTokens||500 } });
+  if (error) throw new Error("連線出錯：" + error.message);
+  if (data.error) throw new Error(typeof data.error==="string" ? data.error : JSON.stringify(data.error).slice(0,150));
+  return data.choices[0].message.content;
 }
 
 async function sendTurn(){
@@ -665,8 +641,8 @@ $("btnDemo").onclick = ()=>{
   $("modalDemo").classList.remove("hidden");
 };
 
-// boot：有 session 就直入，冇就 login
-profiles.current() ? enterHome() : renderLogin();
+// boot：有雲端 session 就直入，冇就 login
+(async ()=>{ (await loadCloud()) ? enterHome() : renderLogin(); })();
 </script>
 </body>
 </html>

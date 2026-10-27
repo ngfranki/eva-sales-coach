@@ -268,16 +268,26 @@
   <button class="btn-gold" style="margin-top:12px" onclick="document.getElementById('modalDemo').classList.add('hidden')">收埋</button>
 </div></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0"></script>
 <script src="data.js"></script>
 <script>
 const D = window.COACH_DATA;
 const $ = id => document.getElementById(id);
 
 // ---------------- cloud（Supabase：帳戶＋成績＋AI proxy） ----------------
+// Publishable key 唔係 JWT：只可以放 apikey header。
+// 登入之後先用 session access_token 做 Authorization: Bearer。
 const SUPA_URL = "https://lvwspnjysfyomuszzjay.supabase.co";
-const SUPA_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2d3Nwbmp5c2Z5b211c3p6amF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0ODIxMzIsImV4cCI6MjEwMTA1ODEzMn0.fmrc8DlO1UXcsLnUdhTG6IZyxv1kZEVP8jSEIQgf2d4";
-const sb = window.supabase.createClient(SUPA_URL, SUPA_ANON);
+const SUPA_PUBLISHABLE_KEY = "sb_publishable_YROUDaSxinrbHH4g7q8gmQ_4za7Ohfj";
+function fetchNoPublishableBearer(input, init) {
+  const headers = new Headers(init && init.headers);
+  const auth = headers.get("Authorization");
+  if (auth && auth.replace(/^Bearer\s+/i, "") === SUPA_PUBLISHABLE_KEY) headers.delete("Authorization");
+  return fetch(input, Object.assign({}, init, { headers }));
+}
+const sb = window.supabase.createClient(SUPA_URL, SUPA_PUBLISHABLE_KEY, {
+  global: { fetch: fetchNoPublishableBearer }
+});
 let ME = null;          // {id, name, created}
 let HIST = [];          // 我嘅雲端成績（登入時載入，本地 append）
 
@@ -441,7 +451,13 @@ function customerSystemPrompt(){
 }
 
 async function callLLM(messages, maxTokens){
-  const { data, error } = await sb.functions.invoke("coach-proxy", { body: { messages, max_tokens: maxTokens||500 } });
+  const { data: { session } } = await sb.auth.getSession();
+  const accessToken = session && session.access_token;
+  if (!accessToken) throw new Error("請先登入");
+  const { data, error } = await sb.functions.invoke("coach-proxy", {
+    body: { messages, max_tokens: maxTokens||500 },
+    headers: { Authorization: "Bearer " + accessToken }
+  });
   if (error) throw new Error("連線出錯：" + error.message);
   if (data.error) throw new Error(typeof data.error==="string" ? data.error : JSON.stringify(data.error).slice(0,150));
   return data.choices[0].message.content;

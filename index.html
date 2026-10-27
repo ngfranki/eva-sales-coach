@@ -158,7 +158,7 @@
           <input type="password" id="loginPw" placeholder="密碼" autocomplete="current-password">
           <button class="btn-gold" id="btnLogin">登入</button>
         </div>
-        <div class="sub" style="margin-top:10px">未有帳戶？<a href="#" id="linkShowNew" style="color:var(--gold);font-weight:700">開一個</a></div>
+        <div class="sub" style="margin-top:10px">未有帳戶？請聯絡 WBH 同你開帳戶。</div>
       </div>
       <div id="newForm" class="hidden">
         <div style="display:flex;flex-direction:column;gap:8px">
@@ -317,7 +317,7 @@ async function loadCloud(){
 }
 
 function renderLogin(){ show("viewLogin"); $("loginEmail").focus(); }
-$("linkShowNew").onclick = (e)=>{ e.preventDefault(); $("newForm").classList.remove("hidden"); $("loginForm").classList.add("hidden"); $("newName").focus(); };
+if ($("linkShowNew")) $("linkShowNew").onclick = (e)=>{ e.preventDefault(); $("newForm").classList.remove("hidden"); $("loginForm").classList.add("hidden"); $("newName").focus(); };
 $("btnNewBack").onclick = ()=>{ $("newForm").classList.add("hidden"); $("loginForm").classList.remove("hidden"); };
 $("btnCreate").onclick = async ()=>{
   const name = $("newName").value.trim(), email = $("newEmail").value.trim(), pw = $("newPw").value;
